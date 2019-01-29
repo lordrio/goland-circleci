@@ -1,0 +1,54 @@
+# Golang CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-go/ for more details
+version: 2
+jobs:
+  docker-build:
+    environment:
+      IMAGE_NAME: lordrio/goland
+    docker:
+      - image: circleci/buildpack-deps:stretch
+    steps:
+      - run: mkdir -p ~/.ssh
+      - run: touch ~/.ssh/known_hosts
+      - run: ssh-keyscan -H gitlab.com >> ~/.ssh/known_hosts
+      - add_ssh_keys:
+          fingerprints:
+            - "da:e5:af:21:fe:9b:3f:0a:b5:a2:ca:cd:35:39:ee:a2"
+      - run: git clone git@gitlab.com:fadzli/goland.git .
+      # - run: go get -v -t -d ./...
+      # - run: echo $(git rev-parse --verify HEAD)
+      # - run: go build -o app goland/hello
+      - setup_remote_docker
+      - run:
+          name: Build Docker image
+          command: docker build -t $IMAGE_NAME:latest .
+      - run:
+          name: Publish Docker Image to Docker Hub
+          command: |
+            echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+            docker push $IMAGE_NAME:latest
+      
+  # goland:
+  #   docker:
+  #     - image: circleci/golang:1.9
+  #   working_directory: /go/src/goland
+  #   steps:
+  #     - run: mkdir -p ~/.ssh
+  #     - run: touch ~/.ssh/known_hosts
+  #     - run: ssh-keyscan -H gitlab.com >> ~/.ssh/known_hosts
+  #     - add_ssh_keys:
+  #         fingerprints:
+  #           - "da:e5:af:21:fe:9b:3f:0a:b5:a2:ca:cd:35:39:ee:a2"
+  #     - run: git clone git@gitlab.com:fadzli/goland.git .
+  #     - run: go get -v -t -d ./...
+  #     - run: echo $(git rev-parse --verify HEAD)
+  #     - run: go build -o app goland/hello
+workflows:
+  version: 2
+  main:
+    jobs:
+      - docker-build:
+          filters:
+            branches:
+              only: master
